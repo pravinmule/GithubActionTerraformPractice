@@ -1,7 +1,16 @@
-name: VPC Deployment
+name: Terraform AWS Deployment
 
 on:
   workflow_dispatch:
+    inputs:
+      approve_apply:
+        description: 'Do you want to apply Terraform changes?'
+        required: true
+        type: choice
+        options:
+          - 'No'
+          - 'Yes'
+        default: 'No'
 
 permissions:
   contents: read
@@ -15,12 +24,35 @@ jobs:
         working-directory: ./1-VpcandSubnet
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
 
       - name: Terraform Init
         run: terraform init
 
+      - name: Terraform Validate
+        run: terraform validate
+
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        if: ${{ inputs.approve_apply == 'Yes' }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply
+        if: ${{ inputs.approve_apply == 'No' }}
+        run: echo "Apply skipped by user."
