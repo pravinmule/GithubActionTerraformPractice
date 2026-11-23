@@ -1,10 +1,20 @@
 
-name: Terraform AWS Deploymentdddd
+name: Terraform AWS Deployment
 
 on:
-  # push:
-  #   branches: [ main ]
-  workflow_dispatch: # Manual trigger only
+  workflow_dispatch:
+    inputs:
+      approve_apply:
+        description: 'Do you want to apply Terraform changes?'
+        required: true
+        type: choice
+        options:
+          - 'No'
+          - 'Yes'
+        default: 'No'
+
+permissions:
+  contents: read
 
 jobs:
   terraform:
@@ -13,7 +23,7 @@ jobs:
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: us-east-1
+      AWS_DEFAULT_REGION: ap-south-1
 
     steps:
       - name: Checkout Repository
@@ -34,5 +44,14 @@ jobs:
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
+      - name: Approval Check
+        if: ${{ inputs.approve_apply == 'Yes' }}
+        run: echo "Approved! Starting Terraform Apply."
+
       - name: Terraform Apply
+        if: ${{ inputs.approve_apply == 'Yes' }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply
+        if: ${{ inputs.approve_apply == 'No' }}
+        run: echo "Terraform Apply skipped by user."
